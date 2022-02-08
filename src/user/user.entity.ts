@@ -7,6 +7,9 @@ export class UserEntity {
   id: number;
 
   @Column()
+  username: string;
+
+  @Column()
   email: string;
 
   @Column({ default: '' })
@@ -15,7 +18,7 @@ export class UserEntity {
   @Column({ default: '' })
   image: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @BeforeInsert()
