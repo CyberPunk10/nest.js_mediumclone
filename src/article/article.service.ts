@@ -29,7 +29,7 @@ export class ArticleService {
   async createArticle(
     currentUser: UserEntity,
     createArticleDto: CreateArticleDto,
-  ) {
+  ): Promise<ArticleEntity> {
     const article = new ArticleEntity();
 
     Object.assign(article, createArticleDto);
@@ -63,5 +63,25 @@ export class ArticleService {
     }
 
     return this.articleRepository.delete({ slug });
+  }
+
+  async updateArticle(
+    currentUserId: number,
+    slug: string,
+    updateArticleDto: CreateArticleDto,
+  ): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+
+    if (!article) {
+      throw new HttpException('Article does not exist', HttpStatus.NOT_FOUND);
+    }
+
+    if (article.author.id !== currentUserId) {
+      throw new HttpException('Yor are not an author', HttpStatus.FORBIDDEN);
+    }
+
+    Object.assign(article, updateArticleDto);
+
+    return this.articleRepository.save(article);
   }
 }
