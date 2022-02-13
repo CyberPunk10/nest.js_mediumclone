@@ -5,9 +5,10 @@ import { CreateUserDto } from '@app/user/dto/createUser.dto';
 import { UserEntity } from './user.entity';
 import { sign } from 'jsonwebtoken';
 import { JWT_SECRET } from '@app/config';
-import { UserResponseInterface } from './types/userResponce.interface';
+import { UserResponseInterface } from './types/userResponse.interface';
 import { LoginUserDto } from './dto/login.dto';
 import { compare } from 'bcrypt';
+import { UpdateUserDto } from './dto/updateUser.dto';
 
 @Injectable()
 export class UserService {
@@ -71,6 +72,16 @@ export class UserService {
     return user;
   }
 
+  async updateUser(
+    userId: number,
+    updateUserDto: UpdateUserDto,
+  ): Promise<UserEntity> {
+    const user = await this.findById(userId);
+    // TODO: Добавить проверку, существует ли уже такая почта
+    // или такой username в базе у другого пользователя
+    return await this.userRepository.save({ ...user, ...updateUserDto });
+  }
+
   findById(id: number): Promise<UserEntity> {
     return this.userRepository.findOne(id);
   }
@@ -86,7 +97,7 @@ export class UserService {
     );
   }
 
-  buildUserResponce(user: UserEntity): UserResponseInterface {
+  buildUserResponse(user: UserEntity): UserResponseInterface {
     return {
       user: {
         ...user,
