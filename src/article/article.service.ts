@@ -40,11 +40,6 @@ export class ArticleService {
 
     queryBuilder.orderBy('articles.createdAt', 'DESC');
 
-    // если есть фильтрация, то важно total count сформировать перед фильтрацией
-    // хотя и это отчасти не обязательно, т.к. получается после фильтрации получаем
-    // сколько всего-всего, а не сколько всего отфильтрованных
-    const articlesCount = await queryBuilder.getCount(); // вернет общее количество записей в запросе
-
     if (query.tag) {
       queryBuilder.andWhere('articles.tagList LIKE :tag', {
         tag: `%${query.tag}%`,
@@ -98,6 +93,11 @@ export class ArticleService {
       const favorited: boolean = favoriteIds.includes(article.id);
       return { ...article, favorited };
     });
+
+    // если есть фильтрация, то важно total count сформировать перед фильтрацией
+    // хотя и это отчасти не обязательно, т.к. получается после фильтрации получаем
+    // сколько всего-всего, а не сколько всего отфильтрованных
+    const articlesCount = await queryBuilder.getCount(); // вернет общее количество записей в запросе
 
     return { articles: articlesWithFavorited, articlesCount };
   }
