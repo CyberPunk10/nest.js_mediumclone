@@ -1,6 +1,6 @@
 import { ArticleType } from './article.type';
 
-export interface ArticlesResponseInteface {
+export interface ArticlesResponseInterface {
   articles: ArticleType[];
   articlesCount: number;
 }

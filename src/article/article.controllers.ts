@@ -17,7 +17,7 @@ import { UserEntity } from '@app/user/user.entity';
 import { ArticleService } from './article.service';
 import { CreateArticleDto } from './dto/createArticle.dto';
 import { ArticleResponseInterface } from './types/articleResponse.interface';
-import { ArticlesResponseInteface } from './types/articlesResponse.interface';
+import { ArticlesResponseInterface } from './types/articlesResponse.interface';
 
 @Controller('articles')
 export class ArticleControllers {
@@ -27,8 +27,17 @@ export class ArticleControllers {
   async findAll(
     @User('id') currentUserId: number,
     @Query() query: any,
-  ): Promise<ArticlesResponseInteface> {
+  ): Promise<ArticlesResponseInterface> {
     return await this.articleService.findAll(currentUserId, query);
+  }
+
+  @Get('feed')
+  @UseGuards(AuthGuard)
+  async getFeed(
+    @User('id') currentUserId: number,
+    @Query() query: any,
+  ): Promise<ArticlesResponseInterface> {
+    return await this.articleService.getFeed(currentUserId, query);
   }
 
   @Post()
