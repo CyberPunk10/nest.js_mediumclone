@@ -29,7 +29,10 @@ export class ArticleService {
     );
   }
 
-  async findAll(currentUserId: number, query: any): Promise<ArticlesResponseInteface> {
+  async findAll(
+    currentUserId: number,
+    query: any,
+  ): Promise<ArticlesResponseInteface> {
     // формирование sql запроса
     const queryBuilder = getRepository(ArticleEntity)
       .createQueryBuilder('articles')
@@ -38,6 +41,8 @@ export class ArticleService {
     queryBuilder.orderBy('articles.createdAt', 'DESC');
 
     // если есть фильтрация, то важно total count сформировать перед фильтрацией
+    // хотя и это отчасти не обязательно, т.к. получается после фильтрации получаем
+    // сколько всего-всего, а не сколько всего отфильтрованных
     const articlesCount = await queryBuilder.getCount(); // вернет общее количество записей в запросе
 
     if (query.tag) {
@@ -55,6 +60,20 @@ export class ArticleService {
       });
     }
 
+    if (query.favorited) {
+      const author = await this.userRepository.findOne(
+        { username: query.favorited },
+        { relations: ['favorites'] },
+      );
+      const ids = author.favorites.map((el) => el.id);
+
+      if (ids.length > 0) {
+        queryBuilder.andWhere('articles.id IN (:...ids)', { ids });
+      } else {
+        queryBuilder.andWhere('1=0');
+      }
+    }
+
     if (query.limit) {
       queryBuilder.limit(query.limit);
     }
@@ -63,9 +82,24 @@ export class ArticleService {
       queryBuilder.offset(query.offset);
     }
 
+    let favoriteIds: number[] = [];
+
+    if (currentUserId) {
+      const currentUser = await this.userRepository.findOne(currentUserId, {
+        relations: ['favorites'],
+      });
+      favoriteIds = currentUser.favorites.map((favorite) => favorite.id);
+    }
+
     const articles = await queryBuilder.getMany(); // вернет записи из запроса
 
-    return { articles, articlesCount };
+    // add field 'favorited'
+    const articlesWithFavorited = articles.map((article) => {
+      const favorited: boolean = favoriteIds.includes(article.id);
+      return { ...article, favorited };
+    });
+
+    return { articles: articlesWithFavorited, articlesCount };
   }
 
   async createArticle(
@@ -125,5 +159,52 @@ export class ArticleService {
     Object.assign(article, updateArticleDto);
 
     return this.articleRepository.save(article);
+  }
+
+  async addArticleToFavorites(
+    currentUserId: number,
+    slug: string,
+  ): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+    // т.к. нам нужен user с реляционными связями, то мы не могли достать его из @User()
+    const user = await this.userRepository.findOne(currentUserId, {
+      relations: ['favorites'],
+    });
+    const isNotFavorited =
+      user.favorites.findIndex(
+        (articleInFavorites) => articleInFavorites.id === article.id,
+      ) === -1;
+
+    if (isNotFavorited) {
+      user.favorites.push(article); // добавляем в favorites пользователя новый пост
+      article.favoritesCount++; // меняем кол-во лайков
+      await this.userRepository.save(user); // сохраняем в бд (typeORM сам сделает реляционную связь)
+      await this.articleRepository.save(article); // сохраняем в бд (typeORM сам сделает реляционную связь)
+    }
+
+    return article;
+  }
+
+  async deleteArticleToFavorites(
+    currentUserId: number,
+    slug: string,
+  ): Promise<ArticleEntity> {
+    const article = await this.findBySlug(slug);
+    // т.к. нам нужен user с реляционными связями, то мы не могли достать его из @User()
+    const user = await this.userRepository.findOne(currentUserId, {
+      relations: ['favorites'],
+    });
+    const articleIndex = user.favorites.findIndex(
+      (articleInFavorites) => articleInFavorites.id === article.id,
+    );
+
+    if (articleIndex >= 0) {
+      user.favorites.splice(articleIndex, 1);
+      article.favoritesCount--;
+      await this.userRepository.save(user);
+      await this.articleRepository.save(article);
+    }
+
+    return article;
   }
 }
